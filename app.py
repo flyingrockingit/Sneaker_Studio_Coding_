@@ -56,7 +56,10 @@ def verify_hcaptcha(token):
             'response': token 
         }
         ,timeout = 5)
-        result = response.json ()
+        result = response.json()
+        return result.get("success", False)
+    except Exception as e:
+        return False
 
 @app.route("/")
 def index():
