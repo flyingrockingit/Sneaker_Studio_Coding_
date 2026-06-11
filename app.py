@@ -67,18 +67,31 @@ def index():
 
 @app.route("/studio")
 def studio():
-    return render_template("studio.html",hcaptcha_site_key="HCAPTCHA_SECRET_KEY")
+    # Pass the real site key from the environment into the template.
+    # The previous hard-coded string prevented the page from receiving a valid key.
+    return render_template("studio.html", hcaptcha_site_key=HCAPTCHA_SITE_KEY)
 
 @app.route("/history")
 def history():
-    return render_template("history.html",designs=[])
+    return render_template("history.html", designs=[])
 
-@app.route("/generate",methods=["POST"])
+@app.route("/generate", methods=["POST"])
 def generate():
-    data=request.get_json(silent=True) or request.form
-    prefs=get_pref(data)
+    data = request.get_json(silent=True) or request.form
+    token = data.get("hcaptcha_token", "")
+
+    # Require a valid hCaptcha token before any AI concept generation.
+    # Earlier this endpoint accepted requests without captcha validation,
+    # which meant bots could call /generate directly and bypass protection.
+    if not token:
+        return jsonify({"error": "hCaptcha token required."}), 400
+
+    if not verify_hcaptcha(token):
+        return jsonify({"error": "hCaptcha verification failed."}), 400
+
+    prefs = get_pref(data)
     try:
-        concept=generate_concept(prefs)
+        concept = generate_concept(prefs)
     except json.JSONDecodeError as e:
         return jsonify({"error": f"Malformed AI response: {e}"}), 500
     except Exception as e:
