@@ -259,13 +259,13 @@
         // the first colorway immediately.
         renderColorwayTabs(c.colorways || []);
 
-        // Placeholder: this is where image generation should be triggered and
-        // the returned image URL should be loaded into the AI image frame.
-        // Example:
-        //   const imageUrl = data.image_url;
-        //   setImageLoadingState(true);
-        //   setImageSource(imageUrl);
-        // Right now the app only renders concept text and colorway preview.
+        if (data.image_url){
+          setImageLoadingState(true);
+          setImageSource(data.image_url);
+        }else{
+          setImageLoadingState(false)
+          setImageError("No image generated!!")  
+        }
       }
     } catch (err) {
       loadingState && loadingState.classList.add('hidden');
