@@ -49,20 +49,11 @@ def generate_concept(prefs):
 import requests 
 import base64
 
-def generate_image_for_concept (concept , prefs):
-    try:
-        concept = generate_concept(prefs)
-        img_url = generate_image_for_concept (concept, prefs)
-    except json.JSONDecoder as e:
-        return jsonify ({"error": f"malformed AI response:{e}"}),500
-    except Exception as e:
-        return jsonify ({"error:" f"concept generation faiked:{e}"}),500
-    return jsonify ({
-        "success" : True, 
-        "concept": concept,
-        "img_url": img_url,
-        "prefs": prefs 
-    })
+def generate_image_for_concept(concept, prefs):
+    # Placeholder function for future image generation.
+    # In the next class, replace this with actual model or API logic
+    # that generates an image and returns a public image URL.
+    return None
 
 def verify_hcaptcha(token):
     try: 
@@ -107,11 +98,17 @@ def generate():
     prefs = get_pref(data)
     try:
         concept = generate_concept(prefs)
+        image_url = generate_image_for_concept(concept, prefs)
     except json.JSONDecodeError as e:
         return jsonify({"error": f"Malformed AI response: {e}"}), 500
     except Exception as e:
         return jsonify({"error": f"Concept generation failed: {e}"}), 500
-    return jsonify({"success": True, "concept": concept, "prefs": prefs})
+    return jsonify({
+        "success": True,
+        "concept": concept,
+        "image_url": image_url,
+        "prefs": prefs,
+    })
 
 if (__name__)=='__main__':
     app.run(debug=True,port=5000)
