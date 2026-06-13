@@ -51,10 +51,11 @@ import base64
 
 def generate_image_for_concept(concept, prefs):
     # Generate a sneaker image from the concept and preferences using
-    # the Hugging Face inference API. Returns a data URL for the image.
+    # the Hugging Face inference API.
+    # Returns a tuple: (data_url_or_None, error_message_or_None)
     hf_token = os.environ.get("HF_TOKEN", "")
     if not hf_token:
-        return None
+        return None, "HF_TOKEN is not set in environment."
 
     prompt = (
         f"Product photography of a {prefs.get('material','leather')} sneaker "
@@ -63,26 +64,33 @@ def generate_image_for_concept(concept, prefs):
         "High detail, studio lighting, clean white background, realistic shoe product shot."
     )
 
-    model = "runwayml/stable-diffusion-v1-5"
-    api_url = f"https://api-inference.huggingface.co/models/{model}"
+    api_url = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell"
     headers = {
         "Authorization": f"Bearer {hf_token}",
-        "Accept": "image/png",
+        "Accept": "image/jpeg",
     }
     payload = {
         "inputs": prompt,
-        "options": {"wait_for_model": True},
+        "parameters": {
+            "width": 512,
+            "height": 512,
+        },
     }
 
     try:
         response = requests.post(api_url, headers=headers, json=payload, timeout=60)
         if response.status_code != 200:
-            return None
+            # Capture the real error: HTTP status + whatever the API returned
+            try:
+                api_msg = response.json()
+            except Exception:
+                api_msg = response.text[:500]
+            return None, f"HF API error {response.status_code}: {api_msg}"
         content_type = response.headers.get("content-type", "image/png")
         image_b64 = base64.b64encode(response.content).decode("utf-8")
-        return f"data:{content_type};base64,{image_b64}"
-    except Exception:
-        return None
+        return f"data:{content_type};base64,{image_b64}", None
+    except Exception as e:
+        return None, f"Request exception: {e}"
 
 def verify_hcaptcha(token):
     try: 
@@ -127,7 +135,7 @@ def generate():
     prefs = get_pref(data)
     try:
         concept = generate_concept(prefs)
-        image_url = generate_image_for_concept(concept, prefs)
+        image_url, image_error = generate_image_for_concept(concept, prefs)
     except json.JSONDecodeError as e:
         return jsonify({"error": f"Malformed AI response: {e}"}), 500
     except Exception as e:
@@ -136,6 +144,7 @@ def generate():
         "success": True,
         "concept": concept,
         "image_url": image_url,
+        "image_error": image_error,
         "prefs": prefs,
     })
 

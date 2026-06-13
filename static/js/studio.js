@@ -263,8 +263,8 @@
           setImageLoadingState(true);
           setImageSource(data.image_url);
         }else{
-          setImageLoadingState(false)
-          setImageError("No image generated!!")  
+          setImageLoadingState(false);
+          setImageError(data.image_error || "No image generated.");
         }
       }
     } catch (err) {
