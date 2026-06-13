@@ -50,10 +50,39 @@ import requests
 import base64
 
 def generate_image_for_concept(concept, prefs):
-    # Placeholder function for future image generation.
-    # In the next class, replace this with actual model or API logic
-    # that generates an image and returns a public image URL.
-    return None
+    # Generate a sneaker image from the concept and preferences using
+    # the Hugging Face inference API. Returns a data URL for the image.
+    hf_token = os.environ.get("HF_TOKEN", "")
+    if not hf_token:
+        return None
+
+    prompt = (
+        f"Product photography of a {prefs.get('material','leather')} sneaker "
+        f"for {prefs.get('occasion','everyday')} wear with a {prefs.get('primary_color','white')} "
+        f"upper and {prefs.get('accent_color','black')} accents, inspired by {prefs.get('inspiration','modern streetwear')}. "
+        "High detail, studio lighting, clean white background, realistic shoe product shot."
+    )
+
+    model = "runwayml/stable-diffusion-v1-5"
+    api_url = f"https://api-inference.huggingface.co/models/{model}"
+    headers = {
+        "Authorization": f"Bearer {hf_token}",
+        "Accept": "image/png",
+    }
+    payload = {
+        "inputs": prompt,
+        "options": {"wait_for_model": True},
+    }
+
+    try:
+        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
+        if response.status_code != 200:
+            return None
+        content_type = response.headers.get("content-type", "image/png")
+        image_b64 = base64.b64encode(response.content).decode("utf-8")
+        return f"data:{content_type};base64,{image_b64}"
+    except Exception:
+        return None
 
 def verify_hcaptcha(token):
     try: 
