@@ -49,6 +49,21 @@ def generate_concept(prefs):
 import requests 
 import base64
 
+def generate_image_for_concept (concept , prefs):
+    try:
+        concept = generate_concept(prefs)
+        img_url = generate_image_for_concept (concept, prefs)
+    except json.JSONDecoder as e:
+        return jsonify ({"error": f"malformed AI response:{e}"}),500
+    except Exception as e:
+        return jsonify ({"error:" f"concept generation faiked:{e}"}),500
+    return jsonify ({
+        "success" : True, 
+        "concept": concept,
+        "img_url": img_url,
+        "prefs": prefs 
+    })
+
 def verify_hcaptcha(token):
     try: 
         response = requests.post(HCAPTCHA_VERIFY_URL,data = {
