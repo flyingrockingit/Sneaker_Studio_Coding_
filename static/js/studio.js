@@ -299,4 +299,41 @@
     formError.textContent = '';
   });
 
+  // ── REMIX: pre-fill form from URL params (?style=...&material=...) ──
+  (function applyRemixParams() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('style') && !params.has('material') && !params.has('occasion')) return;
+
+    ['style', 'material', 'occasion'].forEach(field => {
+      const val = params.get(field);
+      if (!val) return;
+      const hiddenInput = document.getElementById(field);
+      if (hiddenInput) hiddenInput.value = val;
+      const group = document.querySelector(`.chip-group[data-field="${field}"]`);
+      if (group) {
+        group.querySelectorAll('.chip').forEach(c => {
+          c.classList.toggle('active', c.dataset.value === val);
+        });
+      }
+    });
+
+    ['primary_color', 'accent_color'].forEach(field => {
+      const val = params.get(field);
+      if (!val) return;
+      const picker = document.getElementById(field);
+      const text   = document.getElementById(field + '_text');
+      if (picker && /^#[0-9A-Fa-f]{6}$/.test(val)) picker.value = val;
+      if (text   && /^#[0-9A-Fa-f]{6}$/.test(val)) text.value   = val;
+    });
+
+    const insp = params.get('inspiration');
+    if (insp) {
+      const ta = document.getElementById('inspiration');
+      if (ta) ta.value = insp;
+    }
+
+    // Clean URL so refreshing doesn't re-apply
+    window.history.replaceState({}, '', window.location.pathname);
+  })();
+
 })();

@@ -17,16 +17,7 @@
 
   {% block head %}{% endblock %}
 
-  <script>
-    // Redirect to home on page refresh (but not on first load or navigation)
-    (function () {
-      const nav = window.performance && window.performance.getEntriesByType('navigation')[0];
-      const isReload = nav ? nav.type === 'reload' : (window.performance && window.performance.navigation.type === 1);
-      if (isReload && window.location.pathname !== '/') {
-        window.location.replace('/');
-      }
-    })();
-  </script>
+
 </head>
 <body>
 
