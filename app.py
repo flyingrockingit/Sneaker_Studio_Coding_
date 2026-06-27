@@ -1,4 +1,4 @@
-from flask import Flask, jsonify,render_template, request
+from flask import Flask, jsonify,render_template, request, redirect, url_for, session
 from dotenv import load_dotenv
 from groq import Groq
 import os,json
@@ -7,6 +7,12 @@ import os,json
 load_dotenv()
 app=Flask(__name__)
 app.secret_key="sneaker-studio-dev-key"
+import time 
+def _next_id():
+    session.setdefault ("history_counter",0)
+    session["history_counter"] += 1
+    return session ["history_counter"]
+
 
 GROQ_API_KEY=os.environ.get("GROQ_API_KEY","")
 HCAPTCHA_SITE_KEY   = os.environ.get("HCAPTCHA_SITE_KEY",
@@ -140,6 +146,16 @@ def generate():
         return jsonify({"error": f"Malformed AI response: {e}"}), 500
     except Exception as e:
         return jsonify({"error": f"Concept generation failed: {e}"}), 500
+    entry = {
+        "id": _next_id(),
+       "timestamp": time.strftime("%b %d, %Y · %H:%M"),
+       "concept": concept,
+       "img_url": image_url,
+       "prefs": prefs
+    }
+    session.setdefault ("history",[])
+    session["history"].insert(0, entry)
+    session.modify = True
     return jsonify({
         "success": True,
         "concept": concept,
