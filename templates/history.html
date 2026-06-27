@@ -6,10 +6,11 @@
 
 <section class="history-page">
 
+  <!-- ── HEADER ─────────────────────────────────────────────────── -->
   <div class="history-header">
     <div>
       <h1 class="page-title">Design History</h1>
-      <p class="page-sub">Your generated concepts, saved this session.</p>
+      <p class="page-sub">{{ designs|length }} concept{% if designs|length != 1 %}s{% endif %} saved this session.</p>
     </div>
     {% if designs %}
     <form method="POST" action="{{ url_for('clear_history') }}" class="clear-form">
@@ -21,7 +22,7 @@
   </div>
 
   {% if not designs %}
-  <!-- Empty -->
+  <!-- ── EMPTY STATE ─────────────────────────────────────────────── -->
   <div class="history-empty">
     <div class="empty-icon-lg">👟</div>
     <h3>No designs yet</h3>
@@ -30,19 +31,52 @@
   </div>
 
   {% else %}
-  <div class="history-grid">
-    {% for entry in designs %}
-    <article class="history-card">
 
-      <!-- Sneaker preview: AI image if available, else SVG colorway -->
-      <div class="card-visual" style="
-        --upper-color: {{ entry.concept.colorways[0].upper if entry.concept.colorways else '#00C3FF' }};
-        --panel-color: {{ entry.concept.colorways[0].sole  if entry.concept.colorways else '#0096DC' }};
-        --toe-color:   {{ entry.concept.colorways[0].upper if entry.concept.colorways else '#00AAF0' }};
-        --accent-color:{{ entry.concept.colorways[0].accent if entry.concept.colorways else '#EBC9A0' }};
-        --lace-color:  {{ entry.concept.colorways[0].lace  if entry.concept.colorways else '#FAEBC8' }};
-        --midsole-color:{{ entry.concept.colorways[0].tongue if entry.concept.colorways else '#FAEBC8' }};
-      ">
+  <!-- ── SEARCH + SORT CONTROLS ──────────────────────────────────── -->
+  <div class="history-controls">
+    <div class="history-search-wrap">
+      <span class="search-icon">🔍</span>
+      <input
+        type="text"
+        id="historySearch"
+        class="history-search"
+        placeholder="Search by name, tag, style…"
+        autocomplete="off"
+      />
+    </div>
+    <div class="history-sort">
+      <span class="sort-label">Sort:</span>
+      <button class="sort-btn active" data-sort="newest" id="sortNewest">Newest</button>
+      <button class="sort-btn" data-sort="oldest" id="sortOldest">Oldest</button>
+      <button class="sort-btn" data-sort="price" id="sortPrice">Price ↑</button>
+    </div>
+  </div>
+
+  <!-- ── HISTORY GRID ────────────────────────────────────────────── -->
+  <div class="history-grid" id="historyGrid">
+    {% for entry in designs %}
+    <article
+      class="history-card"
+      data-name="{{ entry.concept.name | lower }}"
+      data-tags="{{ (entry.concept.style_tags or []) | join(' ') | lower }}"
+      data-style="{{ entry.prefs.style | lower }}"
+      data-material="{{ entry.prefs.material | lower }}"
+      data-occasion="{{ entry.prefs.occasion | lower }}"
+      data-price="{{ entry.concept.retail_price | replace('$','') | replace(',','') }}"
+      data-timestamp="{{ entry.timestamp }}"
+      data-index="{{ loop.index0 }}"
+    >
+
+      <!-- Sneaker preview -->
+      <div class="card-visual"
+        style="
+          --upper-color: {{ entry.concept.colorways[0].upper   if entry.concept.colorways else '#00C3FF' }};
+          --panel-color: {{ entry.concept.colorways[0].sole    if entry.concept.colorways else '#0096DC' }};
+          --toe-color:   {{ entry.concept.colorways[0].upper   if entry.concept.colorways else '#00AAF0' }};
+          --accent-color:{{ entry.concept.colorways[0].accent  if entry.concept.colorways else '#EBC9A0' }};
+          --lace-color:  {{ entry.concept.colorways[0].lace    if entry.concept.colorways else '#FAEBC8' }};
+          --midsole-color:{{ entry.concept.colorways[0].tongue if entry.concept.colorways else '#FAEBC8' }};
+        ">
         {% if entry.image_url %}
           <div class="card-ai-img-wrap">
             <img src="{{ entry.image_url }}" alt="{{ entry.concept.name }}" class="card-ai-img" loading="lazy" />
@@ -87,13 +121,97 @@
           <span class="pref-pill">{{ entry.prefs.material }}</span>
           <span class="pref-pill">{{ entry.prefs.occasion }}</span>
         </div>
+
+        <!-- Card action row -->
+        <div class="card-actions">
+          <button
+            class="btn-card-expand"
+            onclick="openModal({{ loop.index0 }})"
+            title="View full details"
+          >View Details →</button>
+
+          <a
+            href="{{ url_for('studio') }}?style={{ entry.prefs.style }}&material={{ entry.prefs.material }}&occasion={{ entry.prefs.occasion }}&primary_color={{ entry.prefs.primary_color | urlencode }}&accent_color={{ entry.prefs.accent_color | urlencode }}&inspiration={{ entry.prefs.inspiration | urlencode }}"
+            class="btn-card-remix"
+            title="Remix in Studio"
+          >↺ Remix</a>
+
+          <form method="POST" action="{{ url_for('delete_entry', entry_id=entry.id) }}" class="card-delete-form">
+            <button type="submit" class="btn-card-delete" title="Delete this design"
+              onclick="return confirm('Delete this design?')">✕</button>
+          </form>
+        </div>
       </div>
 
     </article>
     {% endfor %}
   </div>
+
+  <!-- ── NO SEARCH RESULTS NOTICE ───────────────────────────────── -->
+  <div class="history-no-results hidden" id="noResults">
+    <span>🔍</span>
+    <p>No designs match your search.</p>
+  </div>
+
   {% endif %}
 
 </section>
 
+<!-- ═══════════════════════════════════════════════════════════════
+     DETAIL MODAL  (populated by JS from inline JSON)
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="detail-modal hidden" id="detailModal" role="dialog" aria-modal="true" aria-label="Design detail">
+  <div class="detail-modal-box" id="detailModalBox">
+    <button class="detail-modal-close" id="detailModalClose" aria-label="Close">✕</button>
+
+    <div class="dm-header">
+      <div>
+        <p class="dm-eyebrow" id="dmTags"></p>
+        <h2 class="dm-name" id="dmName"></h2>
+        <p class="dm-tagline" id="dmTagline"></p>
+      </div>
+      <div class="dm-meta">
+        <span class="meta-pill" id="dmPrice"></span>
+        <span class="meta-pill meta-pill--light" id="dmAudience"></span>
+      </div>
+    </div>
+
+    <!-- AI image if present -->
+    <div class="dm-img-wrap hidden" id="dmImgWrap">
+      <img id="dmImg" src="" alt="AI generated sneaker" class="dm-img" loading="lazy" />
+      <span class="dm-img-badge">AI</span>
+    </div>
+
+    <p class="dm-desc" id="dmDesc"></p>
+
+    <div class="dm-grid">
+      <div>
+        <p class="dm-grid-label">Materials</p>
+        <ul class="dm-list" id="dmMaterials"></ul>
+      </div>
+      <div>
+        <p class="dm-grid-label">Key Features</p>
+        <ul class="dm-list" id="dmFeatures"></ul>
+      </div>
+      <div>
+        <p class="dm-grid-label">Sole System</p>
+        <p class="dm-sole" id="dmSole"></p>
+      </div>
+    </div>
+
+    <div class="dm-colorways" id="dmColorways"></div>
+
+    <div class="dm-prefs-row" id="dmPrefs"></div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<!-- Inline the design data as JSON for the modal -->
+<script id="historyData" type="application/json">
+{{ designs | tojson }}
+</script>
+
+<script src="{{ url_for('static', filename='js/history.js') }}"></script>
 {% endblock %}

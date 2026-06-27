@@ -122,7 +122,20 @@ def studio():
 
 @app.route("/history")
 def history():
-    return render_template("history.html", designs=[])
+    return render_template("history.html", designs=session.get('history', []))
+
+@app.route("/clear_history", methods=["POST"])
+def clear_history():
+    session.pop('history', None)
+    session.pop('history_counter', None)
+    return redirect(url_for('history'))
+
+@app.route("/delete/<int:entry_id>", methods=["POST"])
+def delete_entry(entry_id):
+    history = session.get('history', [])
+    session['history'] = [e for e in history if e.get('id') != entry_id]
+    session.modified = True
+    return redirect(url_for('history'))
 
 @app.route("/generate", methods=["POST"])
 def generate():
@@ -147,15 +160,15 @@ def generate():
     except Exception as e:
         return jsonify({"error": f"Concept generation failed: {e}"}), 500
     entry = {
-        "id": _next_id(),
-       "timestamp": time.strftime("%b %d, %Y · %H:%M"),
-       "concept": concept,
-       "img_url": image_url,
-       "prefs": prefs
+        "id":        _next_id(),
+        "timestamp": time.strftime("%b %d, %Y · %H:%M"),
+        "concept":   concept,
+        "image_url": image_url,
+        "prefs":     prefs,
     }
-    session.setdefault ("history",[])
-    session["history"].insert(0, entry)
-    session.modify = True
+    session.setdefault('history', [])
+    session['history'].insert(0, entry)
+    session.modified = True
     return jsonify({
         "success": True,
         "concept": concept,
